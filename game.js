@@ -88,6 +88,7 @@ function startTimer() {
 function showCurrent() {
   questionEl.textContent = history[index];
   letterEl.textContent = "Letter: " + START_LETTER;
+  letterEl.hidden = index !== 0; // only relevant for the first question
   backBtn.disabled = index === 0;
   startTimer();
 }

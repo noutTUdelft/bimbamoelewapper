@@ -188,3 +188,45 @@ button.btn {
 .timeup .timer {
   display: none;
 }
+
+/* ---------- Page colours for the three games ---------- */
+
+:root {
+  --accent: #3a7d44;
+  --accent-light: #6fcf7f;
+  --question-bg: rgba(58, 125, 68, 0.55);
+  --jail-text: #5aa865;
+}
+
+.theme-bong {
+  --accent: #7b4fb3;
+  --accent-light: #b08ae0;
+  --question-bg: rgba(123, 79, 179, 0.55);
+  --jail-text: #a07fd0;
+}
+
+.theme-blunt {
+  --accent: #7b4a2a;
+  --accent-light: #c08a5a;
+  --question-bg: rgba(123, 74, 42, 0.55);
+  --jail-text: #b07a4f;
+}
+
+.question {
+  border-color: var(--accent-light);
+  background: var(--question-bg);
+}
+
+.timer {
+  color: var(--accent-light);
+}
+
+.jail {
+  color: var(--jail-text);
+}
+
+.btn-main,
+.btn-back,
+.btn-home {
+  background: var(--accent);
+}
