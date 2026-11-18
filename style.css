@@ -119,7 +119,8 @@ button.btn {
   cursor: pointer;
 }
 
-.btn-back {
+.btn-back,
+.btn-settings {
   position: fixed;
   right: 16px;
   bottom: 16px;
@@ -180,12 +181,12 @@ button.btn {
   height: auto;
 }
 
-.timeup .jail {
+.jailed .jail {
   display: flex;
 }
 
-.timeup .character,
-.timeup .timer {
+.jailed .character,
+.jailed .timer {
   display: none;
 }
 
@@ -227,6 +228,141 @@ button.btn {
 
 .btn-main,
 .btn-back,
+.btn-settings,
 .btn-home {
   background: var(--accent);
+}
+
+/* ---------- Extras: hidden fix, setup screen, settings, Jilla ---------- */
+
+[hidden] {
+  display: none !important;
+}
+
+button.btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+.turn {
+  color: #ffffff;
+  font-size: 1.7rem;
+  font-weight: 800;
+  max-width: 92vw;
+  overflow-wrap: anywhere;
+}
+
+.btn-jilla {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  width: auto;
+  padding: 14px 28px;
+  font-size: 1.3rem;
+  background: #b03a35;
+}
+
+.setup {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 96px 24px 40px;
+  text-align: center;
+}
+
+.setup h1 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 2.2rem;
+}
+
+.players {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  max-width: min(92vw, 640px);
+}
+
+.player,
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border: 3px solid var(--accent-light);
+  border-radius: 14px;
+  background: var(--question-bg);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 1.3rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.player.on,
+.toggle.on {
+  background: var(--accent);
+}
+
+.badge {
+  min-width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #ffffff;
+  color: var(--accent);
+  font-size: 1rem;
+}
+
+.badge:empty {
+  display: none;
+}
+
+.player:focus-visible,
+.toggle:focus-visible,
+.create input:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 3px;
+}
+
+.msg {
+  min-height: 1.4em;
+  margin: 0;
+  color: #ffffff;
+  font-weight: 700;
+  max-width: 92vw;
+}
+
+.create {
+  width: min(86vw, 380px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.create label {
+  display: block;
+  text-align: left;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.create input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 14px;
+  border: 3px solid var(--accent-light);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.35);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 1.2rem;
 }

@@ -13,7 +13,18 @@
     </svg>
   </a>
 
-  <main class="game">
+  <!-- Step 1: choose the players -->
+  <main class="setup" id="setup">
+    <h1>Wie spelen er mee?</h1>
+    <div class="players" id="players"></div>
+    <p class="msg" id="setupMsg" role="status"></p>
+    <button class="toggle" id="jillaToggle" type="button" aria-pressed="false">Jilla: uit</button>
+    <button class="btn btn-main" id="start" type="button" disabled>Start</button>
+  </main>
+
+  <!-- Step 2: the game -->
+  <main class="game" id="game" hidden>
+    <div class="turn" id="turn"></div>
     <div class="question" id="question"></div>
 
     <!-- Put your character image at assets/character.png -->
@@ -22,17 +33,19 @@
     <div class="letter" id="letter"></div>
     <div class="timer" id="timer">30</div>
 
-    <!-- Shown instead of the character and timer when the time is up. Put the image at assets/jail.png -->
+    <!-- Shown instead of the character and timer when a player goes to Jilla. Put the image at assets/jail.png -->
     <div class="jail">
       <img src="assets/jail.png" alt="" onerror="this.style.display='none'">
       <span>Je gaat Jilla</span>
     </div>
 
     <button class="btn btn-main" id="next" type="button">Volgende vraag</button>
+
+    <button class="btn btn-jilla" id="jilla" type="button" hidden>Jilla</button>
+    <button class="btn btn-back" id="back" type="button">Terug</button>
   </main>
 
-  <button class="btn btn-back" id="back" type="button">Terug</button>
-
+  <script src="database.js"></script>
   <script src="game.js"></script>
 </body>
 </html>
