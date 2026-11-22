@@ -13,9 +13,10 @@
     </svg>
   </a>
 
-  <main class="setup" id="settingsMain">
+  <main class="setup withbar" id="settingsMain">
     <h1>Instellingen</h1>
 
+    <!-- Account aanmaken -->
     <button class="btn btn-main" id="openCreate" type="button">Account aanmaken</button>
     <form class="create" id="createForm" hidden>
       <label>Accountnaam
@@ -28,18 +29,55 @@
       <p class="msg" id="createMsg" role="status"></p>
     </form>
 
+    <!-- Accounts (deleting needs the admin code from the bar at the bottom) -->
     <button class="btn btn-main" id="openList" type="button">Accounts</button>
     <div class="players" id="accountList" hidden></div>
+    <button class="btn btn-danger" id="delete" type="button" hidden>Verwijderen</button>
     <p class="msg" id="listMsg" role="status"></p>
+
+    <!-- Logs: appears after the admin code is typed -->
+    <button class="btn btn-main" id="openLogs" type="button" hidden>Logs</button>
+    <section class="panel" id="logsPanel" hidden>
+      <p class="msg" id="logsMsg" role="status"></p>
+      <div id="logsList"></div>
+    </section>
+
+    <!-- Vragen: appears after the staff code is typed -->
+    <button class="btn btn-main" id="openQuestions" type="button" hidden>Vragen</button>
+    <section class="panel" id="questionsPanel" hidden>
+      <p class="msg" id="qMsg" role="status"></p>
+
+      <div class="mrow">
+        <h2>Vragen</h2>
+        <button class="mini" id="newQuestionBtn" type="button">Vraag aanmaken</button>
+        <form class="inline-form" id="questionForm" hidden>
+          <input class="textin" id="questionText" type="text" maxlength="200" placeholder="Nieuwe vraag" autocomplete="off">
+          <div class="chips" id="newQuestionChips"></div>
+          <div class="editrow"><button class="mini" type="submit">Opslaan</button></div>
+        </form>
+        <div id="questionList"></div>
+      </div>
+
+      <div class="mrow">
+        <h2>Categorie&euml;n</h2>
+        <button class="mini" id="newCategoryBtn" type="button">Categorie aanmaken</button>
+        <form class="inline-form" id="categoryForm" hidden>
+          <input class="textin" id="categoryName" type="text" maxlength="30" placeholder="Nieuwe categorie" autocomplete="off">
+          <div class="editrow"><button class="mini" type="submit">Opslaan</button></div>
+        </form>
+        <div class="catboxes" id="categoryList"></div>
+      </div>
+    </section>
   </main>
 
-  <!-- Admin code at the bottom of the screen, only while the account list is open -->
-  <form class="adminbar" id="adminBar" hidden>
-    <input id="adminCode" type="password" placeholder="Admincode" autocomplete="off">
-    <button class="btn btn-main" id="unlock" type="submit">OK</button>
-    <button class="btn btn-main" id="delete" type="button" hidden>Verwijderen</button>
+  <!-- One code box for both codes: the admin code shows Logs, the staff code shows Vragen -->
+  <form class="adminbar" id="codeBar">
+    <p class="barmsg" id="codeMsg" role="status"></p>
+    <input id="codeInput" type="password" placeholder="Admin- of staffcode" autocomplete="off">
+    <button class="btn btn-main" id="codeBtn" type="submit">OK</button>
   </form>
 
+  <script src="config.js"></script>
   <script src="database.js"></script>
   <script src="settings.js"></script>
 </body>

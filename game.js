@@ -1,38 +1,5 @@
 const GAME_TYPE = document.body.dataset.game;
 
-const QUESTIONS = [
-  "Een dier",
-  "Snoep",
-  "Een land",
-  "Een stad",
-  "Een fruitsoort",
-  "Een groente",
-  "Een drankje",
-  "Een beroep",
-  "Een kleur",
-  "Een sport",
-  "Een merk",
-  "Een film",
-  "Een lichaamsdeel",
-  "Een kledingstuk",
-  "Een meubelstuk",
-  "Een vervoersmiddel",
-  "Een muziekinstrument",
-  "Een gerecht",
-  "Een tv-serie",
-  "Een vogel",
-  "Een insect",
-  "Iets uit de supermarkt",
-  "Een plant of boom",
-  "Een stuk gereedschap",
-  "Een snack",
-  "Een jongensnaam",
-  "Een meisjesnaam",
-  "Een schoolvak",
-  "Een hobby",
-  "Iets uit de keuken"
-];
-
 // No Q, X or Y: too hard to answer
 const LETTERS = "ABCDEFGHIJKLMNOPRSTUVWZ".split("");
 
@@ -46,6 +13,8 @@ const homeLink = document.getElementById("home");
 const setupEl = document.getElementById("setup");
 const setupTitle = document.getElementById("setupTitle");
 const playersEl = document.getElementById("players");
+const catPick = document.getElementById("catPick");
+const catChips = document.getElementById("catChips");
 const setupMsg = document.getElementById("setupMsg");
 const jillaToggle = document.getElementById("jillaToggle");
 const rankedToggle = document.getElementById("rankedToggle");
@@ -76,11 +45,17 @@ let names = {};           // id -> name
 let accountsReady = false;
 let selected = [];        // ids chosen in the menu, in playing order
 let jillaOn = false;      // true = a player who goes to Jilla is skipped once
-let ranked = false;       // true = points and Jilla are kept and saved
+let ranked = false;       // true = the game is saved and counts for the leaderboards
+
+let categories = [];      // [{ id, name }] from the database
+let questions = [];       // [{ text, category_ids }] from the database
+let selectedCats = new Set(); // chosen categories (none chosen = all questions)
+let questionsReady = false;
+let questionsProblem = "";    // shown in the menu when the questions can't be used
 
 let players = [];         // ids currently playing, in order
 let participants = new Set(); // everyone who took part at any point
-let stats = {};           // id -> { points, jilla }
+let stats = {};           // id -> { points, jilla } (kept for the recap in every game)
 let skips = {};           // id -> true when skipped on their next turn
 let startLetter = "";
 let deck = [];
@@ -91,11 +66,13 @@ let timeLeft = TIME_PER_QUESTION;
 let timerId = null;
 
 let gameId = "";
-let dirty = false;        // there is something that is not saved yet
+let dirty = false;        // there is something that is not saved yet (ranked games only)
 let saveError = "";
 let idleTimerId = null;
+let startedAt = 0;        // when the game started
+let lastActivityAt = 0;   // last time someone touched the page during the game
 
-// =============== menu (players, Jilla, ranked) ===============
+// =============== menu (players, categories, Jilla, ranked) ===============
 
 function paintToggles() {
   jillaToggle.textContent = "Jilla: " + (jillaOn ? "aan" : "uit");
@@ -108,6 +85,14 @@ function paintToggles() {
   rankedToggle.disabled = phase === "menu"; // can't change ranked during a game
 }
 
+// The questions the game may use: all of them, or only the chosen categories
+function questionPool() {
+  if (selectedCats.size === 0) {
+    return questions;
+  }
+  return questions.filter((q) => q.category_ids.some((id) => selectedCats.has(id)));
+}
+
 function updateSelection() {
   const buttons = playersEl.children;
   for (let i = 0; i < buttons.length; i++) {
@@ -117,12 +102,20 @@ function updateSelection() {
     btn.setAttribute("aria-pressed", position !== -1 ? "true" : "false");
     btn.firstChild.textContent = position !== -1 ? String(position + 1) : "";
   }
+
+  const poolEmpty = questionsReady && questionPool().length === 0;
   if (accountsReady) {
-    setupMsg.textContent = selected.length < MIN_PLAYERS
-      ? "Kies minstens " + MIN_PLAYERS + " spelers."
-      : "";
+    if (questionsProblem !== "") {
+      setupMsg.textContent = questionsProblem;
+    } else if (poolEmpty) {
+      setupMsg.textContent = "Er zijn geen vragen in de gekozen categorie\u00ebn.";
+    } else {
+      setupMsg.textContent = selected.length < MIN_PLAYERS
+        ? "Kies minstens " + MIN_PLAYERS + " spelers."
+        : "";
+    }
   }
-  startBtn.disabled = selected.length < MIN_PLAYERS;
+  startBtn.disabled = selected.length < MIN_PLAYERS || !questionsReady || poolEmpty;
 }
 
 function togglePlayer(id) {
@@ -156,6 +149,29 @@ function renderPlayers() {
   updateSelection();
 }
 
+function renderCategoryChips() {
+  catChips.innerHTML = "";
+  catPick.hidden = categories.length === 0;
+  categories.forEach((category) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip" + (selectedCats.has(category.id) ? " on" : "");
+    chip.textContent = category.name;
+    chip.setAttribute("aria-pressed", selectedCats.has(category.id) ? "true" : "false");
+    chip.addEventListener("click", () => {
+      if (selectedCats.has(category.id)) {
+        selectedCats.delete(category.id);
+      } else {
+        selectedCats.add(category.id);
+      }
+      chip.classList.toggle("on", selectedCats.has(category.id));
+      chip.setAttribute("aria-pressed", selectedCats.has(category.id) ? "true" : "false");
+      updateSelection();
+    });
+    catChips.append(chip);
+  });
+}
+
 async function loadAccounts() {
   setupMsg.textContent = "Accounts laden...";
   try {
@@ -169,6 +185,24 @@ async function loadAccounts() {
   } catch (err) {
     setupMsg.textContent = err.message;
   }
+}
+
+async function loadQuestions() {
+  try {
+    const data = await fetchGameData();
+    categories = data.categories;
+    questions = data.questions;
+    renderCategoryChips();
+    if (questions.length === 0) {
+      questionsProblem = "Er zijn nog geen vragen. Maak ze aan via Instellingen.";
+    } else {
+      questionsReady = true;
+      questionsProblem = "";
+    }
+  } catch (err) {
+    questionsProblem = err.message;
+  }
+  updateSelection();
 }
 
 jillaToggle.addEventListener("click", () => {
@@ -196,7 +230,7 @@ function shuffle(array) {
 
 function newQuestion() {
   if (deck.length === 0) {
-    deck = shuffle([...QUESTIONS]);
+    deck = shuffle(questionPool().map((q) => q.text));
   }
   return deck.pop();
 }
@@ -297,9 +331,7 @@ function sendToJilla() {
   }
   stopTimer();
   turn.jilla = true;
-  if (ranked) {
-    stats[turn.player].jilla++;
-  }
+  stats[turn.player].jilla++;
   if (jillaOn) {
     skips[turn.player] = true; // skipped on their next turn
   }
@@ -313,9 +345,7 @@ function answer(points) {
   stopTimer();
 
   const earned = turn.jilla ? 0 : points;
-  if (ranked) {
-    stats[turn.player].points += earned;
-  }
+  stats[turn.player].points += earned;
   answeredCount++;
   markDirty();
 
@@ -347,6 +377,8 @@ function startGame() {
   answeredCount = 0;
   gameId = makeId();
   dirty = false;
+  startedAt = Date.now();
+  lastActivityAt = startedAt;
 
   phase = "play";
   showOnly("game");
@@ -406,6 +438,7 @@ gameSettingsBtn.addEventListener("click", () => {
   setupTitle.textContent = "Spelinstellingen";
   startBtn.textContent = "Verder";
   paintToggles();
+  renderCategoryChips();
   updateSelection();
   showOnly("setup");
 });
@@ -414,6 +447,7 @@ function applyMenuChanges() {
   const oldPlayers = players.slice();
   players = selected.slice();
   players.forEach(addParticipant);
+  deck = []; // new questions come from the (possibly changed) categories
 
   const turn = history[history.length - 1];
   let newTimer = false;
@@ -448,7 +482,7 @@ startBtn.addEventListener("click", () => {
   }
 });
 
-// =============== saving ===============
+// =============== saving (ranked games only) ===============
 
 async function saveGame(keepalive = false) {
   if (!ranked || answeredCount === 0 || !dirty) {
@@ -461,7 +495,8 @@ async function saveGame(keepalive = false) {
     jilla: stats[id].jilla
   }));
   try {
-    await saveGameScores(gameId, GAME_TYPE, scores, keepalive);
+    const seconds = Math.max(0, Math.round((lastActivityAt - startedAt) / 1000));
+    await saveGameScores(gameId, GAME_TYPE, scores, seconds, answeredCount, keepalive);
     return true;
   } catch (err) {
     dirty = true;
@@ -472,6 +507,9 @@ async function saveGame(keepalive = false) {
 
 // Save after 10 minutes without touching the page
 function bumpIdle() {
+  if (phase === "play" || phase === "menu") {
+    lastActivityAt = Date.now();
+  }
   clearTimeout(idleTimerId);
   if (ranked && (phase === "play" || phase === "menu")) {
     idleTimerId = setTimeout(() => saveGame(false), IDLE_SAVE_MS);
@@ -520,8 +558,12 @@ function showRecap() {
 }
 
 async function saveAndReport() {
-  recapMsg.textContent = "Opslaan...";
   retrySaveBtn.hidden = true;
+  if (!ranked) {
+    recapMsg.textContent = "Dit spel was niet ranked, dus het is niet opgeslagen.";
+    return;
+  }
+  recapMsg.textContent = "Opslaan...";
   const ok = await saveGame(false);
   if (ok) {
     recapMsg.textContent = "Het spel is opgeslagen.";
@@ -543,9 +585,10 @@ function endGame() {
 
 retrySaveBtn.addEventListener("click", saveAndReport);
 
+// Home shows the recap of a game that was started, ranked or not
 homeLink.addEventListener("click", (event) => {
   const inGame = phase === "play" || phase === "menu";
-  if (inGame && ranked && answeredCount > 0) {
+  if (inGame && answeredCount > 0) {
     event.preventDefault();
     endGame();
   }
@@ -553,3 +596,4 @@ homeLink.addEventListener("click", (event) => {
 
 paintToggles();
 loadAccounts();
+loadQuestions();

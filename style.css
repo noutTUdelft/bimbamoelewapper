@@ -548,3 +548,217 @@ button.btn:disabled {
   padding: 12px 22px;
   font-size: 1.2rem;
 }
+
+/* ---------- Red delete button ---------- */
+
+.btn-danger {
+  background: #b03a35;
+}
+
+/* ---------- Code bar message ---------- */
+
+.adminbar {
+  flex-wrap: wrap;
+}
+
+.barmsg {
+  width: 100%;
+  margin: 0;
+  color: #ffffff;
+  font-weight: 700;
+  text-align: center;
+}
+
+.barmsg:empty {
+  display: none;
+}
+
+/* ---------- Logs, questions and categories (settings) ---------- */
+
+.panel {
+  width: min(92vw, 640px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: left;
+}
+
+.datetitle {
+  margin: 8px 0 0;
+  color: #ffffff;
+  font-size: 1.3rem;
+  font-weight: 800;
+  text-align: left;
+}
+
+#logsList,
+#questionList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.logcard {
+  width: 100%;
+}
+
+.meta {
+  margin-top: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+.mrow h2 {
+  margin: 0 0 10px;
+  color: #ffffff;
+  font-size: 1.6rem;
+}
+
+.mrow > .mini {
+  margin-bottom: 12px;
+}
+
+.inline-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.textin {
+  width: 100%;
+  padding: 10px 12px;
+  border: 3px solid var(--accent-light);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.35);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 1.1rem;
+}
+
+.catboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.catbox,
+.qbox {
+  padding: 10px 14px;
+  border: 3px solid var(--accent-light);
+  border-radius: 14px;
+  background: var(--question-bg);
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.qbox {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.qtext {
+  overflow-wrap: anywhere;
+}
+
+.qactions,
+.hoverinfo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.editrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mini {
+  padding: 7px 14px;
+  border: 0;
+  border-bottom: 3px solid rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  background: var(--accent);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.mini.danger {
+  background: #b03a35;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  padding: 6px 12px;
+  border: 2px solid var(--accent-light);
+  border-radius: 999px;
+  background: transparent;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.chip.on {
+  background: var(--accent);
+}
+
+.hint {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.mini:focus-visible,
+.chip:focus-visible,
+.textin:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 2px;
+}
+
+/* ---------- Game logs: tap or hover to delete ---------- */
+
+/* The colour of a game log shows which game it was */
+.logcard.type-baap {
+  border-color: #6fcf7f;
+  background: rgba(58, 125, 68, 0.55);
+}
+
+.logcard.type-bong {
+  border-color: #b08ae0;
+  background: rgba(123, 79, 179, 0.55);
+}
+
+.logcard.type-blunt {
+  border-color: #c08a5a;
+  background: rgba(123, 74, 42, 0.55);
+}
+
+.catpick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  max-width: min(92vw, 640px);
+}
+
+.catpick .chips {
+  justify-content: center;
+}
+
+.catpick p {
+  margin: 0;
+}
