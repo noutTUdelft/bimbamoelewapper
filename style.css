@@ -119,14 +119,13 @@ button.btn {
   cursor: pointer;
 }
 
-.btn-back,
-.btn-settings {
+.btn-back {
   position: fixed;
   right: 16px;
   bottom: 16px;
   width: auto;
-  padding: 14px 28px;
-  font-size: 1.3rem;
+  padding: 12px 20px;
+  font-size: 1.2rem;
   background: #3a7d44;
 }
 
@@ -186,7 +185,13 @@ button.btn {
 }
 
 .jailed .character,
-.jailed .timer {
+.jailed .timer,
+.jailed .multi {
+  display: none;
+}
+
+.viewing .timer,
+.viewing .multi {
   display: none;
 }
 
@@ -258,8 +263,8 @@ button.btn:disabled {
   left: 16px;
   bottom: 16px;
   width: auto;
-  padding: 14px 28px;
-  font-size: 1.3rem;
+  padding: 12px 20px;
+  font-size: 1.2rem;
   background: #b03a35;
 }
 
@@ -364,5 +369,182 @@ button.btn:disabled {
   background: rgba(0, 0, 0, 0.35);
   color: #ffffff;
   font-family: inherit;
+  font-size: 1.2rem;
+}
+
+/* ---------- Icon buttons ---------- */
+
+.btn-settings,
+.btn-trophy,
+.btn-gamesettings {
+  position: fixed;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-bottom: 5px solid rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  background: var(--accent);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn-settings {
+  top: 16px;
+  right: 16px;
+}
+
+.btn-trophy {
+  bottom: 16px;
+  left: 16px;
+}
+
+.btn-gamesettings {
+  bottom: 16px;
+  left: 50%;
+  width: 56px;
+  height: 56px;
+  margin-left: -28px;
+}
+
+.btn-settings:active,
+.btn-trophy:active,
+.btn-gamesettings:active {
+  border-bottom-width: 2px;
+}
+
+.btn-settings:focus-visible,
+.btn-trophy:focus-visible,
+.btn-gamesettings:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 3px;
+}
+
+/* ---------- Game buttons ---------- */
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(86vw, 380px);
+}
+
+.actions .btn {
+  width: 100%;
+}
+
+.multi {
+  display: flex;
+  gap: 12px;
+}
+
+.multi .btn {
+  flex: 1;
+  width: auto;
+  padding: 14px 8px;
+  font-size: 1.4rem;
+}
+
+.toggles {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+.toggle:disabled,
+.player:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+/* ---------- Recap and leaderboards ---------- */
+
+.board {
+  width: min(92vw, 420px);
+  padding: 16px 20px;
+  border: 3px solid var(--accent-light);
+  border-radius: 18px;
+  background: var(--question-bg);
+  color: #ffffff;
+  text-align: left;
+}
+
+.board h2 {
+  margin: 0 0 10px;
+  font-size: 1.4rem;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.row span:first-child {
+  overflow-wrap: anywhere;
+}
+
+.boardpage {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 96px 24px 60px;
+  text-align: center;
+}
+
+.boardpage h1 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 2.2rem;
+}
+
+#boards {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+/* ---------- Admin code bar (settings) ---------- */
+
+.withbar {
+  padding-bottom: 130px;
+}
+
+.adminbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: rgba(20, 28, 16, 0.94);
+}
+
+.adminbar input {
+  width: min(60vw, 260px);
+  padding: 12px;
+  border: 3px solid var(--accent-light);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.35);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 1.1rem;
+}
+
+.adminbar .btn {
+  width: auto;
+  padding: 12px 22px;
   font-size: 1.2rem;
 }

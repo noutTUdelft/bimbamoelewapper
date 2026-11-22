@@ -1,3 +1,5 @@
+const GAME_TYPE = document.body.dataset.game;
+
 const QUESTIONS = [
   "Een dier",
   "Snoep",
@@ -36,12 +38,17 @@ const LETTERS = "ABCDEFGHIJKLMNOPRSTUVWZ".split("");
 
 const TIME_PER_QUESTION = 30;
 const MIN_PLAYERS = 2;
+const IDLE_SAVE_MS = 10 * 60 * 1000; // save after 10 minutes without touching the page
 
 // ----- elements -----
+const homeLink = document.getElementById("home");
+
 const setupEl = document.getElementById("setup");
+const setupTitle = document.getElementById("setupTitle");
 const playersEl = document.getElementById("players");
 const setupMsg = document.getElementById("setupMsg");
 const jillaToggle = document.getElementById("jillaToggle");
+const rankedToggle = document.getElementById("rankedToggle");
 const startBtn = document.getElementById("start");
 
 const gameEl = document.getElementById("game");
@@ -50,19 +57,62 @@ const questionEl = document.getElementById("question");
 const letterEl = document.getElementById("letter");
 const timerEl = document.getElementById("timer");
 const nextBtn = document.getElementById("next");
+const doubleBtn = document.getElementById("double");
+const tripleBtn = document.getElementById("triple");
 const backBtn = document.getElementById("back");
 const jillaBtn = document.getElementById("jilla");
+const gameSettingsBtn = document.getElementById("gameSettings");
 
-// ----- setup screen -----
-let selected = [];      // chosen player names, in playing order
-let jillaOn = false;
+const recapEl = document.getElementById("recap");
+const recapList = document.getElementById("recapList");
+const recapJilla = document.getElementById("recapJilla");
+const recapMsg = document.getElementById("recapMsg");
+const retrySaveBtn = document.getElementById("retrySave");
+
+// ----- state -----
+let phase = "setup";      // setup | play | menu (game settings) | recap
+let accounts = [];        // [{ id, name }]
+let names = {};           // id -> name
 let accountsReady = false;
+let selected = [];        // ids chosen in the menu, in playing order
+let jillaOn = false;      // true = a player who goes to Jilla is skipped once
+let ranked = false;       // true = points and Jilla are kept and saved
+
+let players = [];         // ids currently playing, in order
+let participants = new Set(); // everyone who took part at any point
+let stats = {};           // id -> { points, jilla }
+let skips = {};           // id -> true when skipped on their next turn
+let startLetter = "";
+let deck = [];
+let history = [];         // { question, player, jilla, after? } per turn
+let viewIndex = 0;        // which turn is on screen (Terug looks back, nothing changes)
+let answeredCount = 0;
+let timeLeft = TIME_PER_QUESTION;
+let timerId = null;
+
+let gameId = "";
+let dirty = false;        // there is something that is not saved yet
+let saveError = "";
+let idleTimerId = null;
+
+// =============== menu (players, Jilla, ranked) ===============
+
+function paintToggles() {
+  jillaToggle.textContent = "Jilla: " + (jillaOn ? "aan" : "uit");
+  jillaToggle.classList.toggle("on", jillaOn);
+  jillaToggle.setAttribute("aria-pressed", jillaOn ? "true" : "false");
+
+  rankedToggle.textContent = "Ranked: " + (ranked ? "aan" : "uit");
+  rankedToggle.classList.toggle("on", ranked);
+  rankedToggle.setAttribute("aria-pressed", ranked ? "true" : "false");
+  rankedToggle.disabled = phase === "menu"; // can't change ranked during a game
+}
 
 function updateSelection() {
   const buttons = playersEl.children;
   for (let i = 0; i < buttons.length; i++) {
     const btn = buttons[i];
-    const position = selected.indexOf(btn.dataset.name);
+    const position = selected.indexOf(Number(btn.dataset.id));
     btn.classList.toggle("on", position !== -1);
     btn.setAttribute("aria-pressed", position !== -1 ? "true" : "false");
     btn.firstChild.textContent = position !== -1 ? String(position + 1) : "";
@@ -75,31 +125,31 @@ function updateSelection() {
   startBtn.disabled = selected.length < MIN_PLAYERS;
 }
 
-function togglePlayer(name) {
-  const position = selected.indexOf(name);
+function togglePlayer(id) {
+  const position = selected.indexOf(id);
   if (position === -1) {
-    selected.push(name);
+    selected.push(id);
   } else {
     selected.splice(position, 1);
   }
   updateSelection();
 }
 
-function renderPlayers(names) {
+function renderPlayers() {
   playersEl.innerHTML = "";
-  names.forEach((name) => {
+  accounts.forEach((account) => {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "player";
-    btn.dataset.name = name;
+    btn.dataset.id = String(account.id);
 
     const badge = document.createElement("span");
     badge.className = "badge";
     const label = document.createElement("span");
-    label.textContent = name;
+    label.textContent = account.name;
 
     btn.append(badge, label);
-    btn.addEventListener("click", () => togglePlayer(name));
+    btn.addEventListener("click", () => togglePlayer(account.id));
     playersEl.append(btn);
   });
   accountsReady = true;
@@ -109,12 +159,13 @@ function renderPlayers(names) {
 async function loadAccounts() {
   setupMsg.textContent = "Accounts laden...";
   try {
-    const rows = await fetchAccounts();
-    if (rows.length === 0) {
+    accounts = await fetchAccounts();
+    accounts.forEach((account) => { names[account.id] = account.name; });
+    if (accounts.length === 0) {
       setupMsg.textContent = "Er zijn nog geen accounts. Maak er een aan via Instellingen.";
       return;
     }
-    renderPlayers(rows.map((row) => row.name));
+    renderPlayers();
   } catch (err) {
     setupMsg.textContent = err.message;
   }
@@ -122,20 +173,18 @@ async function loadAccounts() {
 
 jillaToggle.addEventListener("click", () => {
   jillaOn = !jillaOn;
-  jillaToggle.classList.toggle("on", jillaOn);
-  jillaToggle.setAttribute("aria-pressed", jillaOn ? "true" : "false");
-  jillaToggle.textContent = "Jilla: " + (jillaOn ? "aan" : "uit");
+  paintToggles();
 });
 
-// ----- game -----
-let players = [];       // names in playing order
-let startLetter = "";   // one letter for the whole game
-let skips = [];         // true = this player is skipped on their next turn
-let deck = [];          // questions not used yet (shuffled)
-let history = [];       // { question, player, skipsAtStart } for every turn
-let index = -1;         // which turn is on screen
-let timeLeft = TIME_PER_QUESTION;
-let timerId = null;
+rankedToggle.addEventListener("click", () => {
+  if (phase !== "setup") {
+    return;
+  }
+  ranked = !ranked;
+  paintToggles();
+});
+
+// =============== helpers ===============
 
 function shuffle(array) {
   for (let i = array.length - 1; i > 0; i--) {
@@ -152,91 +201,355 @@ function newQuestion() {
   return deck.pop();
 }
 
-// The next player in order. Players marked in `skips` are passed over once.
-function nextPlayer(from) {
-  while (true) {
-    from = (from + 1) % players.length;
-    if (skips[from]) {
-      skips[from] = false;
-      continue;
-    }
-    return from;
+function makeId() {
+  if (window.crypto && window.crypto.randomUUID) {
+    return window.crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = Math.floor(Math.random() * 16);
+    return (c === "x" ? r : (r & 3) | 8).toString(16);
+  });
+}
+
+function addParticipant(id) {
+  participants.add(id);
+  if (!stats[id]) {
+    stats[id] = { points: 0, jilla: 0 };
   }
 }
 
-function renderTimer() {
+// The next player after `fromId` in `order`. Players still in `players`
+// who are marked in `skips` are passed over once.
+function nextPlayer(order, fromId) {
+  let position = order.indexOf(fromId);
+  for (let i = 0; i < order.length * 2 + 2; i++) {
+    position = (position + 1) % order.length;
+    const id = order[position];
+    if (!players.includes(id)) {
+      continue;
+    }
+    if (skips[id]) {
+      skips[id] = false;
+      continue;
+    }
+    return id;
+  }
+  return players[0];
+}
+
+// =============== timer ===============
+
+function stopTimer() {
+  clearInterval(timerId);
+  timerId = null;
+}
+
+function tick() {
+  timeLeft--;
   timerEl.textContent = timeLeft;
+  if (timeLeft <= 0) {
+    stopTimer();
+    sendToJilla(); // time is up = Jilla
+  }
+}
+
+function runTimer() {
+  stopTimer();
+  timerId = setInterval(tick, 1000);
+}
+
+// =============== showing the game ===============
+
+function render() {
+  const live = viewIndex === history.length - 1;
+  const turn = history[viewIndex];
+
+  document.body.classList.toggle("viewing", !live);
+  document.body.classList.toggle("jailed", live && turn.jilla);
+
+  turnEl.textContent = names[turn.player] + (live ? " is aan de beurt" : " was aan de beurt");
+  questionEl.textContent = turn.question;
+  letterEl.textContent = "Letter: " + startLetter;
+  letterEl.hidden = viewIndex !== 0; // only relevant for the first question
+  timerEl.textContent = timeLeft;
+  backBtn.disabled = viewIndex === 0;
+  jillaBtn.disabled = !live || turn.jilla;
+}
+
+function showOnly(section) {
+  setupEl.hidden = section !== "setup";
+  gameEl.hidden = section !== "game";
+  recapEl.hidden = section !== "recap";
+}
+
+// =============== playing ===============
+
+function markDirty() {
+  if (ranked) {
+    dirty = true;
+  }
 }
 
 function sendToJilla() {
-  clearInterval(timerId);
-  skips[history[index].player] = true;
-  document.body.classList.add("jailed");
+  const turn = history[history.length - 1];
+  if (phase !== "play" || turn.jilla) {
+    return;
+  }
+  stopTimer();
+  turn.jilla = true;
+  if (ranked) {
+    stats[turn.player].jilla++;
+  }
+  if (jillaOn) {
+    skips[turn.player] = true; // skipped on their next turn
+  }
+  markDirty();
+  render();
 }
 
-function startTimer() {
-  clearInterval(timerId);
+// Gives points for a correct answer and moves on to the next question and player.
+function answer(points) {
+  const turn = history[history.length - 1];
+  stopTimer();
+
+  const earned = turn.jilla ? 0 : points;
+  if (ranked) {
+    stats[turn.player].points += earned;
+  }
+  answeredCount++;
+  markDirty();
+
+  const next = nextPlayer(players, turn.after !== undefined ? turn.after : turn.player);
+  history.push({ question: newQuestion(), player: next, jilla: false });
+  viewIndex = history.length - 1;
   timeLeft = TIME_PER_QUESTION;
-  renderTimer();
-  timerId = setInterval(() => {
-    timeLeft--;
-    renderTimer();
-    if (timeLeft <= 0) {
-      clearInterval(timerId);
-      if (jillaOn) {
-        sendToJilla();
-      }
-    }
-  }, 1000);
+  render();
+  runTimer();
 }
 
-function showCurrent() {
-  const turn = history[index];
-  skips = turn.skipsAtStart.slice();
-  document.body.classList.remove("jailed");
-
-  turnEl.textContent = players[turn.player] + " is aan de beurt";
-  questionEl.textContent = turn.question;
-  letterEl.textContent = "Letter: " + startLetter;
-  letterEl.hidden = index !== 0; // only relevant for the first question
-  backBtn.disabled = index === 0;
-  startTimer();
+function resumeTimerIfLive() {
+  const turn = history[history.length - 1];
+  if (viewIndex === history.length - 1 && !turn.jilla && timeLeft > 0) {
+    runTimer();
+  }
 }
 
-startBtn.addEventListener("click", () => {
+function startGame() {
   players = selected.slice();
   startLetter = LETTERS[Math.floor(Math.random() * LETTERS.length)];
-  skips = players.map(() => false);
+  participants = new Set();
+  stats = {};
+  skips = {};
+  players.forEach(addParticipant);
   deck = [];
-  history = [{ question: newQuestion(), player: 0, skipsAtStart: skips.slice() }];
-  index = 0;
+  history = [{ question: newQuestion(), player: players[0], jilla: false }];
+  viewIndex = 0;
+  answeredCount = 0;
+  gameId = makeId();
+  dirty = false;
 
-  setupEl.hidden = true;
-  gameEl.hidden = false;
-  jillaBtn.hidden = !jillaOn;
-  showCurrent();
-});
+  phase = "play";
+  showOnly("game");
+  timeLeft = TIME_PER_QUESTION;
+  render();
+  runTimer();
+  bumpIdle();
+}
 
 nextBtn.addEventListener("click", () => {
-  const player = nextPlayer(history[index].player);
-  // Going forward again after Terug keeps the same question
-  const question = index < history.length - 1 ? history[index + 1].question : newQuestion();
-  history[index + 1] = { question, player, skipsAtStart: skips.slice() };
-  index++;
-  showCurrent();
+  if (viewIndex < history.length - 1) {
+    // Looking back: just step forward again, nothing is scored
+    viewIndex++;
+    render();
+    resumeTimerIfLive();
+    return;
+  }
+  answer(1);
+});
+
+doubleBtn.addEventListener("click", () => {
+  if (viewIndex === history.length - 1) {
+    answer(2);
+  }
+});
+
+tripleBtn.addEventListener("click", () => {
+  if (viewIndex === history.length - 1) {
+    answer(3);
+  }
 });
 
 backBtn.addEventListener("click", () => {
-  if (index > 0) {
-    index--;
-    showCurrent();
+  if (viewIndex > 0) {
+    stopTimer(); // the timer waits while you look back
+    viewIndex--;
+    render();
   }
 });
 
 jillaBtn.addEventListener("click", () => {
-  if (jillaOn) {
+  if (viewIndex === history.length - 1) {
     sendToJilla();
   }
 });
 
+// =============== game settings during the game ===============
+
+gameSettingsBtn.addEventListener("click", () => {
+  if (phase !== "play") {
+    return;
+  }
+  stopTimer();
+  viewIndex = history.length - 1;
+  phase = "menu";
+  selected = players.slice();
+  setupTitle.textContent = "Spelinstellingen";
+  startBtn.textContent = "Verder";
+  paintToggles();
+  updateSelection();
+  showOnly("setup");
+});
+
+function applyMenuChanges() {
+  const oldPlayers = players.slice();
+  players = selected.slice();
+  players.forEach(addParticipant);
+
+  const turn = history[history.length - 1];
+  let newTimer = false;
+
+  if (!players.includes(turn.player)) {
+    // The player whose turn it is was removed: the next player in the new order continues
+    const replacement = nextPlayer(oldPlayers, turn.player);
+    if (turn.jilla) {
+      // already dealt with, so just make sure the next turn goes to the replacement
+      turn.after = players[(players.indexOf(replacement) - 1 + players.length) % players.length];
+    } else {
+      turn.player = replacement;
+      newTimer = true;
+    }
+  }
+
+  markDirty();
+  phase = "play";
+  showOnly("game");
+  if (newTimer) {
+    timeLeft = TIME_PER_QUESTION;
+  }
+  render();
+  resumeTimerIfLive();
+}
+
+startBtn.addEventListener("click", () => {
+  if (phase === "setup") {
+    startGame();
+  } else if (phase === "menu") {
+    applyMenuChanges();
+  }
+});
+
+// =============== saving ===============
+
+async function saveGame(keepalive = false) {
+  if (!ranked || answeredCount === 0 || !dirty) {
+    return true;
+  }
+  dirty = false;
+  const scores = [...participants].map((id) => ({
+    account_id: id,
+    points: stats[id].points,
+    jilla: stats[id].jilla
+  }));
+  try {
+    await saveGameScores(gameId, GAME_TYPE, scores, keepalive);
+    return true;
+  } catch (err) {
+    dirty = true;
+    saveError = err.message;
+    return false;
+  }
+}
+
+// Save after 10 minutes without touching the page
+function bumpIdle() {
+  clearTimeout(idleTimerId);
+  if (ranked && (phase === "play" || phase === "menu")) {
+    idleTimerId = setTimeout(() => saveGame(false), IDLE_SAVE_MS);
+  }
+}
+document.addEventListener("pointerdown", bumpIdle, true);
+document.addEventListener("keydown", bumpIdle, true);
+
+// Save when the page is closed or put away
+window.addEventListener("pagehide", () => saveGame(true));
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") {
+    saveGame(true);
+  }
+});
+
+// =============== ending the game (Home) ===============
+
+function showRecap() {
+  recapList.innerHTML = "";
+  const rows = [...participants].map((id) => ({
+    name: names[id],
+    points: stats[id].points,
+    jilla: stats[id].jilla
+  }));
+  rows.sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
+
+  rows.forEach((row) => {
+    const line = document.createElement("div");
+    line.className = "row";
+    const who = document.createElement("span");
+    who.textContent = row.name;
+    const value = document.createElement("span");
+    value.textContent = row.points + (row.points === 1 ? " punt" : " punten");
+    line.append(who, value);
+    recapList.append(line);
+  });
+
+  const most = Math.max(...rows.map((row) => row.jilla));
+  if (most === 0) {
+    recapJilla.textContent = "Niemand ging naar Jilla.";
+  } else {
+    const who = rows.filter((row) => row.jilla === most).map((row) => row.name).join(", ");
+    recapJilla.textContent = "Meeste Jilla: " + who + " (" + most + "\u00d7)";
+  }
+}
+
+async function saveAndReport() {
+  recapMsg.textContent = "Opslaan...";
+  retrySaveBtn.hidden = true;
+  const ok = await saveGame(false);
+  if (ok) {
+    recapMsg.textContent = "Het spel is opgeslagen.";
+  } else {
+    recapMsg.textContent = "Opslaan mislukt. " + saveError;
+    retrySaveBtn.hidden = false;
+  }
+}
+
+function endGame() {
+  stopTimer();
+  clearTimeout(idleTimerId);
+  phase = "recap";
+  document.body.classList.remove("jailed", "viewing");
+  showOnly("recap");
+  showRecap();
+  saveAndReport();
+}
+
+retrySaveBtn.addEventListener("click", saveAndReport);
+
+homeLink.addEventListener("click", (event) => {
+  const inGame = phase === "play" || phase === "menu";
+  if (inGame && ranked && answeredCount > 0) {
+    event.preventDefault();
+    endGame();
+  }
+});
+
+paintToggles();
 loadAccounts();
