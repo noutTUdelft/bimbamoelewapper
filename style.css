@@ -663,13 +663,30 @@ button.btn:disabled {
   overflow-wrap: anywhere;
 }
 
+/* The buttons of a box only show after pressing the box (one box at a time) */
 .qactions,
 .hoverinfo {
-  display: flex;
+  display: none;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin-top: 6px;
+}
+
+.expanded .qactions,
+.expanded .hoverinfo {
+  display: flex;
+}
+
+.catbox,
+.qbox,
+.logcard {
+  cursor: pointer;
+}
+
+#logsPanel,
+#questionsTitle {
+  scroll-margin-top: 88px;
 }
 
 .editrow {
@@ -747,18 +764,7 @@ button.btn:disabled {
   background: rgba(123, 74, 42, 0.55);
 }
 
-.catpick {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  max-width: min(92vw, 640px);
-}
-
-.catpick .chips {
+.catchips {
   justify-content: center;
-}
-
-.catpick p {
-  margin: 0;
+  max-width: min(92vw, 640px);
 }

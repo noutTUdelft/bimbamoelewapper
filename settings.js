@@ -14,16 +14,42 @@ function plural(n, one, many) {
 }
 
 // ---------- codes (one box at the bottom) ----------
+const settingsMain = document.getElementById("settingsMain");
 const codeBar = document.getElementById("codeBar");
 const codeInput = document.getElementById("codeInput");
 const codeBtn = document.getElementById("codeBtn");
 const codeMsg = document.getElementById("codeMsg");
 
+const MESSAGE_SECONDS = 3; // how long "Admin ontgrendeld." etc. stays visible
+
 let adminCode = ""; // filled in once the admin code was accepted
 let staffCode = ""; // filled in once the staff code was accepted
+let codeMsgTimer = null;
 
 function isAdmin() {
   return adminCode !== "";
+}
+
+// The code box disappears once the admin code is accepted (it unlocks everything).
+// It comes back when the page is opened again.
+function updateCodeBar() {
+  const showInput = !isAdmin();
+  codeInput.hidden = !showInput;
+  codeBtn.hidden = !showInput;
+  const barVisible = showInput || codeMsg.textContent !== "";
+  codeBar.hidden = !barVisible;
+  settingsMain.classList.toggle("withbar", barVisible);
+}
+
+// Shows a message for a few seconds
+function flashCodeMsg(text) {
+  clearTimeout(codeMsgTimer);
+  codeMsg.textContent = text;
+  updateCodeBar();
+  codeMsgTimer = setTimeout(() => {
+    codeMsg.textContent = "";
+    updateCodeBar();
+  }, MESSAGE_SECONDS * 1000);
 }
 
 function showAdminFeatures() {
@@ -32,6 +58,15 @@ function showAdminFeatures() {
     logsPanel.hidden = true;
   }
   refreshAccountControls();
+  updateCreateForm();
+  updateCodeBar();
+}
+
+function showStaffFeatures() {
+  openQuestionsBtn.hidden = staffCode === "";
+  if (staffCode === "") {
+    questionsPanel.hidden = true;
+  }
 }
 
 function lockAdmin() {
@@ -43,13 +78,6 @@ function lockAdmin() {
   showStaffFeatures();
 }
 
-function showStaffFeatures() {
-  openQuestionsBtn.hidden = staffCode === "";
-  if (staffCode === "") {
-    questionsPanel.hidden = true;
-  }
-}
-
 codeBar.addEventListener("submit", async (event) => {
   event.preventDefault();
   const code = codeInput.value;
@@ -58,39 +86,58 @@ codeBar.addEventListener("submit", async (event) => {
   }
 
   codeBtn.disabled = true;
+  clearTimeout(codeMsgTimer);
   codeMsg.textContent = "Bezig...";
+
+  let message = "";
   try {
     if (await checkAdminCode(code)) {
       adminCode = code;
       staffCode = code; // the admin code works for questions too
       showAdminFeatures();
       showStaffFeatures();
-      codeMsg.textContent = "Admin ontgrendeld.";
+      message = "Admin ontgrendeld.";
     } else if (await checkStaffCode(code)) {
       staffCode = code;
       showStaffFeatures();
-      codeMsg.textContent = "Staff ontgrendeld.";
+      message = "Staff ontgrendeld.";
     } else {
-      codeMsg.textContent = "Verkeerde code.";
+      message = "Verkeerde code.";
     }
   } catch (err) {
-    codeMsg.textContent = err.message;
+    message = err.message;
   }
+
   codeInput.value = "";
   codeBtn.disabled = false;
+  flashCodeMsg(message);
 });
 
 // ---------- create account ----------
 const openCreateBtn = document.getElementById("openCreate");
 const createForm = document.getElementById("createForm");
 const nameInput = document.getElementById("name");
-const codeFieldInput = document.getElementById("code");
 const submitBtn = document.getElementById("submit");
 const createMsg = document.getElementById("createMsg");
+
+const CREATE_HINT = "Typ eerst de admincode onderaan de pagina.";
+
+// You can only create an account once the admin code was typed correctly
+function updateCreateForm() {
+  submitBtn.disabled = !isAdmin();
+  if (!isAdmin()) {
+    if (createMsg.textContent === "") {
+      createMsg.textContent = CREATE_HINT;
+    }
+  } else if (createMsg.textContent === CREATE_HINT) {
+    createMsg.textContent = "";
+  }
+}
 
 openCreateBtn.addEventListener("click", () => {
   createForm.hidden = !createForm.hidden;
   if (!createForm.hidden) {
+    updateCreateForm();
     nameInput.focus();
   }
 });
@@ -99,7 +146,10 @@ createForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const name = nameInput.value.trim();
-  const code = codeFieldInput.value;
+  if (!isAdmin()) {
+    createMsg.textContent = CREATE_HINT;
+    return;
+  }
   if (name === "") {
     createMsg.textContent = "Vul een accountnaam in.";
     return;
@@ -109,7 +159,7 @@ createForm.addEventListener("submit", async (event) => {
   createMsg.textContent = "Bezig...";
 
   try {
-    const result = await createAccount(name, code);
+    const result = await createAccount(name, adminCode);
     if (result === "ok") {
       createMsg.textContent = "Account \u201c" + name + "\u201d is aangemaakt.";
       nameInput.value = "";
@@ -117,6 +167,7 @@ createForm.addEventListener("submit", async (event) => {
         loadList();
       }
     } else if (result === "wrong_code") {
+      lockAdmin();
       createMsg.textContent = "Verkeerde admincode.";
     } else if (result === "name_taken") {
       createMsg.textContent = "Deze naam bestaat al.";
@@ -129,7 +180,7 @@ createForm.addEventListener("submit", async (event) => {
     createMsg.textContent = err.message;
   }
 
-  submitBtn.disabled = false;
+  submitBtn.disabled = !isAdmin();
 });
 
 // ---------- accounts list and delete ----------
@@ -308,6 +359,7 @@ function renderLogs(rows) {
     }
 
     const card = el("div", "board logcard type-" + game.type);
+    makeExpandable(card);
     card.title = GAME_NAMES[game.type] || "";
     game.players.forEach((player) => {
       const line = el("div", "row");
@@ -362,11 +414,17 @@ async function loadLogs() {
   }
 }
 
-openLogsBtn.addEventListener("click", () => {
+// Scrolls so the element is at the top of the screen (or as far down as the page goes)
+function scrollToTop(element) {
+  element.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+openLogsBtn.addEventListener("click", async () => {
   const opening = logsPanel.hidden;
   logsPanel.hidden = !opening;
   if (opening) {
-    loadLogs();
+    await loadLogs();
+    scrollToTop(logsPanel);
   }
 });
 
@@ -416,6 +474,27 @@ function makeChips(selectedSet) {
     wrap.append(chip);
   });
   return wrap;
+}
+
+// Pressing a box shows its buttons. Pressing it again, or another box, hides them.
+let expandedBox = null;
+
+function makeExpandable(box) {
+  box.addEventListener("click", (event) => {
+    if (event.target && event.target.closest && event.target.closest("button, input")) {
+      return; // pressing a button inside the box doesn't close it
+    }
+    if (expandedBox === box) {
+      box.classList.remove("expanded");
+      expandedBox = null;
+      return;
+    }
+    if (expandedBox) {
+      expandedBox.classList.remove("expanded");
+    }
+    box.classList.add("expanded");
+    expandedBox = box;
+  });
 }
 
 function miniButton(text, danger, onClick) {
@@ -525,6 +604,7 @@ function questionBox(question, sectionKey) {
       mutate(() => deleteQuestion(staffCode, question.id), "Vraag verwijderd."))
   );
   box.append(actions);
+  makeExpandable(box);
   return box;
 }
 
@@ -573,6 +653,7 @@ function renderCategories() {
         mutate(() => deleteCategory(staffCode, category.id), "Categorie verwijderd."))
     );
     box.append(info);
+    makeExpandable(box);
     categoryListEl.append(box);
   });
 }
@@ -611,6 +692,7 @@ openQuestionsBtn.addEventListener("click", async () => {
       await loadQuestions();
       if (staffCode !== "") {
         qMsg.textContent = "";
+        scrollToTop(document.getElementById("questionsTitle"));
       }
     } catch (err) {
       qMsg.textContent = err.message;
@@ -652,3 +734,7 @@ categoryForm.addEventListener("submit", async (event) => {
     categoryName.value = "";
   }
 });
+
+// ---------- start ----------
+showAdminFeatures();
+showStaffFeatures();

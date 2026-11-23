@@ -13,7 +13,7 @@ const homeLink = document.getElementById("home");
 const setupEl = document.getElementById("setup");
 const setupTitle = document.getElementById("setupTitle");
 const playersEl = document.getElementById("players");
-const catPick = document.getElementById("catPick");
+const catToggle = document.getElementById("catToggle");
 const catChips = document.getElementById("catChips");
 const setupMsg = document.getElementById("setupMsg");
 const jillaToggle = document.getElementById("jillaToggle");
@@ -93,7 +93,16 @@ function questionPool() {
   return questions.filter((q) => q.category_ids.some((id) => selectedCats.has(id)));
 }
 
+// The categories button reads "alle" until you pick specific categories
+function paintCatToggle() {
+  const count = selectedCats.size;
+  catToggle.textContent = "Categorie\u00ebn: " + (count === 0 ? "alle" : count);
+  catToggle.classList.toggle("on", count > 0);
+  catToggle.setAttribute("aria-expanded", catChips.hidden ? "false" : "true");
+}
+
 function updateSelection() {
+  paintCatToggle();
   const buttons = playersEl.children;
   for (let i = 0; i < buttons.length; i++) {
     const btn = buttons[i];
@@ -151,7 +160,10 @@ function renderPlayers() {
 
 function renderCategoryChips() {
   catChips.innerHTML = "";
-  catPick.hidden = categories.length === 0;
+  catToggle.hidden = categories.length === 0;
+  if (categories.length === 0) {
+    catChips.hidden = true;
+  }
   categories.forEach((category) => {
     const chip = document.createElement("button");
     chip.type = "button";
@@ -204,6 +216,11 @@ async function loadQuestions() {
   }
   updateSelection();
 }
+
+catToggle.addEventListener("click", () => {
+  catChips.hidden = !catChips.hidden;
+  paintCatToggle();
+});
 
 jillaToggle.addEventListener("click", () => {
   jillaOn = !jillaOn;
@@ -438,6 +455,7 @@ gameSettingsBtn.addEventListener("click", () => {
   setupTitle.textContent = "Spelinstellingen";
   startBtn.textContent = "Verder";
   paintToggles();
+  catChips.hidden = true;
   renderCategoryChips();
   updateSelection();
   showOnly("setup");
@@ -528,6 +546,17 @@ document.addEventListener("visibilitychange", () => {
 
 // =============== ending the game (Home) ===============
 
+function formatDuration(seconds) {
+  if (seconds < 60) {
+    return seconds + " sec";
+  }
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) {
+    return minutes + " min";
+  }
+  return Math.floor(minutes / 60) + " u " + String(minutes % 60).padStart(2, "0") + " min";
+}
+
 function showRecap() {
   recapList.innerHTML = "";
   const rows = [...participants].map((id) => ({
@@ -547,6 +576,12 @@ function showRecap() {
     line.append(who, value);
     recapList.append(line);
   });
+
+  const seconds = Math.max(0, Math.round((lastActivityAt - startedAt) / 1000));
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  meta.textContent = "Speeltijd: " + formatDuration(seconds) + " \u00b7 Rondes: " + answeredCount;
+  recapList.append(meta);
 
   const most = Math.max(...rows.map((row) => row.jilla));
   if (most === 0) {

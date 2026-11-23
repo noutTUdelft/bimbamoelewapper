@@ -17,15 +17,13 @@
   <main class="setup" id="setup">
     <h1 id="setupTitle">Wie spelen er mee?</h1>
     <div class="players" id="players"></div>
-    <div class="catpick" id="catPick" hidden>
-      <p class="hint">Categorie&euml;n (niets kiezen = alle)</p>
-      <div class="chips" id="catChips"></div>
-    </div>
     <p class="msg" id="setupMsg" role="status"></p>
     <div class="toggles">
       <button class="toggle" id="jillaToggle" type="button" aria-pressed="false">Jilla: uit</button>
       <button class="toggle" id="rankedToggle" type="button" aria-pressed="false">Ranked: uit</button>
+      <button class="toggle" id="catToggle" type="button" aria-expanded="false" hidden>Categorie&euml;n: alle</button>
     </div>
+    <div class="chips catchips" id="catChips" hidden></div>
     <button class="btn btn-main" id="start" type="button" disabled>Start</button>
   </main>
 

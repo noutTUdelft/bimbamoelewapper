@@ -22,9 +22,6 @@
       <label>Accountnaam
         <input id="name" type="text" maxlength="20" autocomplete="off" required>
       </label>
-      <label>Admincode
-        <input id="code" type="password" autocomplete="off" required>
-      </label>
       <button class="btn btn-main" id="submit" type="submit">Aanmaken</button>
       <p class="msg" id="createMsg" role="status"></p>
     </form>
@@ -48,7 +45,7 @@
       <p class="msg" id="qMsg" role="status"></p>
 
       <div class="mrow">
-        <h2>Vragen</h2>
+        <h2 id="questionsTitle">Vragen</h2>
         <button class="mini" id="newQuestionBtn" type="button">Vraag aanmaken</button>
         <form class="inline-form" id="questionForm" hidden>
           <input class="textin" id="questionText" type="text" maxlength="200" placeholder="Nieuwe vraag" autocomplete="off">
