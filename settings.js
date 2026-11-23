@@ -120,24 +120,19 @@ const nameInput = document.getElementById("name");
 const submitBtn = document.getElementById("submit");
 const createMsg = document.getElementById("createMsg");
 
-const CREATE_HINT = "Typ eerst de admincode onderaan de pagina.";
-
-// You can only create an account once the admin code was typed correctly
+// The button (like Logs) only shows once the admin code was typed correctly
 function updateCreateForm() {
-  submitBtn.disabled = !isAdmin();
+  openCreateBtn.hidden = !isAdmin();
   if (!isAdmin()) {
-    if (createMsg.textContent === "") {
-      createMsg.textContent = CREATE_HINT;
-    }
-  } else if (createMsg.textContent === CREATE_HINT) {
+    createForm.hidden = true;
     createMsg.textContent = "";
   }
+  submitBtn.disabled = !isAdmin();
 }
 
 openCreateBtn.addEventListener("click", () => {
   createForm.hidden = !createForm.hidden;
   if (!createForm.hidden) {
-    updateCreateForm();
     nameInput.focus();
   }
 });
@@ -147,7 +142,7 @@ createForm.addEventListener("submit", async (event) => {
 
   const name = nameInput.value.trim();
   if (!isAdmin()) {
-    createMsg.textContent = CREATE_HINT;
+    createMsg.textContent = "Typ eerst de admincode onderaan de pagina.";
     return;
   }
   if (name === "") {
@@ -476,11 +471,16 @@ function makeChips(selectedSet) {
   return wrap;
 }
 
-// Pressing a box shows its buttons. Pressing it again, or another box, hides them.
+// Phone: pressing a box shows its buttons. Pressing it again, or another box, hides them.
+// Computer: hovering over a box shows its buttons.
 let expandedBox = null;
 
 function makeExpandable(box) {
   box.addEventListener("click", (event) => {
+    // On a computer with a mouse the box opens by hovering (see the CSS), no click needed
+    if (window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+      return;
+    }
     if (event.target && event.target.closest && event.target.closest("button, input")) {
       return; // pressing a button inside the box doesn't close it
     }

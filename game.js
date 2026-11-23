@@ -3,6 +3,7 @@ const GAME_TYPE = document.body.dataset.game;
 // No Q, X or Y: too hard to answer
 const LETTERS = "ABCDEFGHIJKLMNOPRSTUVWZ".split("");
 
+const NO_CATEGORY = 0; // the "Zonder categorie" choice (real category ids start at 1)
 const TIME_PER_QUESTION = 30;
 const MIN_PLAYERS = 2;
 const IDLE_SAVE_MS = 10 * 60 * 1000; // save after 10 minutes without touching the page
@@ -90,7 +91,11 @@ function questionPool() {
   if (selectedCats.size === 0) {
     return questions;
   }
-  return questions.filter((q) => q.category_ids.some((id) => selectedCats.has(id)));
+  return questions.filter((q) =>
+    q.category_ids.length === 0
+      ? selectedCats.has(NO_CATEGORY)
+      : q.category_ids.some((id) => selectedCats.has(id))
+  );
 }
 
 // The categories button reads "alle" until you pick specific categories
@@ -164,7 +169,12 @@ function renderCategoryChips() {
   if (categories.length === 0) {
     catChips.hidden = true;
   }
-  categories.forEach((category) => {
+  // the categories, plus "Zonder categorie" when some questions have none
+  const choices = categories.slice();
+  if (questions.some((q) => q.category_ids.length === 0)) {
+    choices.push({ id: NO_CATEGORY, name: "Zonder categorie" });
+  }
+  choices.forEach((category) => {
     const chip = document.createElement("button");
     chip.type = "button";
     chip.className = "chip" + (selectedCats.has(category.id) ? " on" : "");

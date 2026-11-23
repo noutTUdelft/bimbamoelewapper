@@ -678,6 +678,15 @@ button.btn:disabled {
   display: flex;
 }
 
+/* On a computer with a mouse a box also opens by hovering over it */
+@media (hover: hover) and (pointer: fine) {
+  .qbox:hover .qactions,
+  .logcard:hover .qactions,
+  .catbox:hover .hoverinfo {
+    display: flex;
+  }
+}
+
 .catbox,
 .qbox,
 .logcard {
